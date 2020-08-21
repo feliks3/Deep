@@ -1,34 +1,82 @@
 import pandas as pd
+from sklearn.model_selection import train_test_split
 import numpy as np
 import sklearn
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score 
 from sklearn.datasets import load_svmlight_file
 
-X, y = load_svmlight_file('diabetes_scale')
-X = np.array(X.todense())
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+class Perceptron:
+    def init(self):
+        print("init")
+        
+        
+        
+    def load(self):
+        self.X, self.y = load_svmlight_file('diabetes_scale')
+        self.X = np.array(self.X.todense())
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.2, random_state=42)
 
-def train_data(W,T,X_train,y_train,learning_rate):
-    X_train = sklearn.preprocessing.normalize(X_train)
-    X_train = np.c_[np.ones(len(X_train)), X_train]
-    for j in range(T):
-        step = np.zeros([len(X_train[0])])
-        for i in range(len(X_train)):
-            if y_train[i] * np.dot(X_train[i], W) <= 0:
-                step += y_train[i] * X_train[i]
-        W = W + learning_rate * step
-    return W
+    def pre_processing(self, randomInit, epoch, learning_rate):
+        self.randomInit = randomInit
+        if randomInit:
+            self.W = np.random.randn(len(self.X_train[0])+1)
+        else:
+            self.W = np.zeros([len(self.X_train[0])+1])
+    
+        self.epoch = epoch
+        self.learning_rate = learning_rate
+    
+    def train_data(self):
+        self.X_train_b = np.c_[np.ones(len(self.X_train)), self.X_train]
+        for _ in range(self.epoch):
+            step = np.zeros([len(self.X_train_b[0])])
+            for i in range(len(self.X_train_b)):
+                if self.y_train[i] * np.dot(self.X_train_b[i], self.W) <= 0:
+                    step += self.y_train[i] * self.X_train_b[i]
+            self.W = self.W + self.learning_rate * step
 
-def predict(x,W):
-    x = np.c_[np.ones(len(x)), x]
-    g = np.dot(x,W)
-    s = np.sign(g)
-    return s    
+    
+    
+    def predict(self, x):
+        x = np.c_[np.ones(len(x)), x]
+        self.g = np.dot(x,self.W)
+        s = np.sign(self.g)
+        return s
+
+    
+    def getAccuracy(self):
+
+        self.train_data()
+
+        self.y_predict_train = self.predict(self.X_train)
+        self.accuracy_train = accuracy_score(self.y_train , self.y_predict_train)    
+
+        self.y_predict_test = self.predict(self.X_test)
+        self.accuracy_test = accuracy_score(self.y_test, self.y_predict_test)    
+    
+    def getRisk(self):
+        self.loss = 0
+        for i in range(len(self.X_train)):
+            self.loss += np.maximum(0, -self.y_train[i] * np.dot(self.X_train_b[i], self.W))
+        self.empirical_risk = self.loss/len(self.X_train)
+        print(self.empirical_risk)
+    
+
+    def showResult(self):
+        self.getAccuracy()
+        print("accuracy_train" ,self.accuracy_train , "accuracy_test", self.accuracy_test, self.epoch, self.learning_rate, self.randomInit)
+        self.getRisk()
 
 
-W = np.zeros([len(X_train[0])+1])
-W = train_data(W,100,X_train, y_train, 0.001)
-y_predict = predict(X_test,W)
 
-accuracy = np.count_nonzero(y_test == y_predict)/np.count_nonzero(y_test)
-print(accuracy)
+for randomInit in [True, False]:
+    for epoch in [10 ,50, 100, 500]:
+        for learning_rate in [0.1, 0.01, 0.001, 0.0001]:
+            perceptron = Perceptron()
+            perceptron.init()
+            perceptron.load()
+            perceptron.pre_processing(randomInit, epoch, learning_rate)
+            perceptron.train_data()
+            perceptron.showResult()
+            
+
